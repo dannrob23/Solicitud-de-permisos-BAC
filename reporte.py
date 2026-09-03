@@ -53,7 +53,7 @@ if not _acceso_permitido():
 st.title("📋 Solicitudes de Ingreso — Consulta")
 st.caption("Reporte de consulta (solo lectura).")
 
-ESTADOS = ["RECIBIDO", "PENDIENTE APROBACIÓN", "ENVIADO", "APROBADO", "RECHAZADO"]
+ESTADOS = ["PENDIENTE APROBACIÓN", "APROBADO", "RECHAZADO"]
 
 COLOR_ESTADO = {
     "RECIBIDO": "#94a3b8",
@@ -70,7 +70,9 @@ COLOR_ESTADO_TEXTO = {
     "RECHAZADO": "#b91c1c",
 }
 
-LEGACY = {"REVISAR": "PENDIENTE APROBACIÓN", "NOTIFICADO": "APROBADO", "PENDIENTE": "RECIBIDO"}
+LEGACY = {"REVISAR": "PENDIENTE APROBACIÓN", "NOTIFICADO": "APROBADO",
+          "PENDIENTE": "PENDIENTE APROBACIÓN", "RECIBIDO": "PENDIENTE APROBACIÓN",
+          "ENVIADO": "PENDIENTE APROBACIÓN"}
 
 def estado_norm(e):
     e = (e or "").strip().upper()
