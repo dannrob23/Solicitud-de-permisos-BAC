@@ -6,12 +6,18 @@ Ejecutar:  streamlit run reporte.py --server.headless true --server.port 8502
 """
 import os, sqlite3, io
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 import pandas as pd
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(BASE, "base.db")
+ZONA_COLOMBIA = ZoneInfo("America/Bogota")
+
+def ahora_colombia():
+    """Fecha y hora actual en Colombia (UTC-5), sin importar el huso del servidor."""
+    return datetime.now(ZONA_COLOMBIA).strftime("%d/%m/%Y %H:%M:%S")
 
 st.set_page_config(page_title="Consulta Solicitudes de Ingreso", page_icon="📋", layout="wide")
 
@@ -110,7 +116,7 @@ def cargar_datos():
 
 df = cargar_datos()
 
-st.caption(f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+st.caption(f"Actualizado: {ahora_colombia()} (hora de Colombia)")
 
 if st.button("🔄 Actualizar ahora"):
     cargar_datos.clear()
