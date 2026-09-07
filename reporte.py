@@ -111,10 +111,17 @@ def cargar_datos():
     con = sqlite3.connect(DB)
     df = pd.read_sql_query(
         """SELECT id, caso, oficina, solicitante, fecha_solicitud, regional,
-                  aprobador, estado, fecha_proceso
+                  aprobador, estado, fecha_proceso, fecha_respuesta
            FROM historial ORDER BY id DESC""", con)
     con.close()
     return df
+
+def _parsedt(txt):
+    """Convierte 'dd/mm/yyyy HH:MM' a datetime o None."""
+    try:
+        return datetime.strptime(str(txt).strip(), "%d/%m/%Y %H:%M")
+    except Exception:
+        return None
 
 df = cargar_datos()
 
@@ -133,6 +140,38 @@ df = df.drop(columns=["estado", "id"])
 
 st.markdown("**Estado del flujo**")
 st.markdown(reporte(df), unsafe_allow_html=True)
+
+# ---------- Gráficos ----------
+st.markdown("#### 📊 Análisis")
+g1, g2 = st.columns(2)
+
+with g1:
+    st.markdown("**Permisos por regional**")
+    conteo = df["regional"].replace("", "Sin regional").fillna("Sin regional").value_counts()
+    if not conteo.empty:
+        st.bar_chart(conteo, horizontal=True, color="#0f766e", height=260, sort=False)
+        st.caption("Total de solicitudes por regional (la más alta = la de mayor volumen).")
+    else:
+        st.info("Sin datos para el gráfico.")
+
+with g2:
+    st.markdown("**Tiempo de respuesta por regional (días)**")
+    fin = df[df["Estado"].isin(["APROBADO", "RECHAZADO"])].copy()
+    fin["sol_dt"] = fin["fecha_solicitud"].map(_parsedt)
+    fin["res_dt"] = fin["fecha_respuesta"].map(_parsedt)
+    fin = fin.dropna(subset=["sol_dt", "res_dt"])
+    if fin.empty:
+        st.info("Aún no hay respuestas con fecha.\nSe llena automáticamente cuando se marca "
+                "APROBADO o RECHAZADO desde la gestión.")
+    else:
+        fin["dias"] = ((fin["res_dt"] - fin["sol_dt"]).dt.total_seconds() / 86400.0).round(1)
+        prom = fin.groupby(fin["regional"].replace("", "Sin regional").fillna("Sin regional"))["dias"].mean()
+        if prom.empty:
+            st.info("Sin datos para el gráfico.")
+        else:
+            prom = prom.sort_values(ascending=False)
+            st.bar_chart(prom, horizontal=True, color="#0d9488", height=260, sort=False)
+            st.caption(f"Promedio por regional sobre {len(fin)} solicitudes respondidas.")
 
 st.markdown("#### 🔍 Filtros")
 f1, f2 = st.columns([2, 3])
