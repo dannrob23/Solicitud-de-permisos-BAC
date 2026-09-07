@@ -173,6 +173,19 @@ with g2:
             st.bar_chart(prom, horizontal=True, color="#0d9488", height=260, sort=False)
             st.caption(f"Promedio por regional sobre {len(fin)} solicitudes respondidas.")
 
+# ---------- Contadores por regional ----------
+st.markdown("#### Tabla por regional")
+tab_reg = df.copy()
+tab_reg["Regional"] = tab_reg["regional"].replace("", "Sin regional").fillna("Sin regional")
+cruce = pd.crosstab(tab_reg["Regional"], tab_reg["Estado"])
+cruce = cruce.reindex(columns=["PENDIENTE APROBACIÓN", "APROBADO", "RECHAZADO"], fill_value=0)
+cruce.columns = ["Pendiente aprobación", "Aprobados", "Rechazados"]
+cruce["Total"] = cruce.sum(axis=1)
+cruce = cruce.sort_values("Total", ascending=False)
+st.dataframe(cruce, use_container_width=True,
+             height=min(60 + 35 * len(cruce), 520))
+st.caption("Contadores por regional: pendientes por aprobación y aprobados (los que usas para medir la carga de cada regional).")
+
 st.markdown("#### 🔍 Filtros")
 f1, f2 = st.columns([2, 3])
 with f1:
