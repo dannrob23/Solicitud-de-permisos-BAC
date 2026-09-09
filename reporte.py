@@ -18,7 +18,6 @@ ZONA_COLOMBIA = ZoneInfo("America/Bogota")
 def ahora_colombia():
     """Fecha y hora actual en Colombia (UTC-5), sin importar el huso del servidor."""
     return datetime.now(ZONA_COLOMBIA).strftime("%d/%m/%Y %H:%M:%S")
-
 st.set_page_config(page_title="Consulta Solicitudes de Ingreso", page_icon="📋", layout="wide")
 
 st.markdown("""
@@ -105,7 +104,7 @@ def fondo_estado(val):
     return f"background-color:{c}33"
 
 @st.cache_data(ttl=30)
-def cargar_datos():
+def cargar_datos(simplificar=True):
     if not os.path.exists(DB):
         return pd.DataFrame()
     con = sqlite3.connect(DB)
@@ -114,6 +113,26 @@ def cargar_datos():
                   aprobador, estado, fecha_proceso, fecha_respuesta
            FROM historial ORDER BY id DESC""", con)
     con.close()
+    if simplificar and not df.empty:
+        df = _aplicar_filtro_aprobados(df)
+    return df
+
+def _dias_aprobado(fecha_resp_str):
+    """Días desde la fecha de respuesta. >2 días significa histórico."""
+    try:
+        dt = datetime.strptime(str(fecha_resp_str).strip()[:16], "%d/%m/%Y %H:%M")
+        return (datetime.now() - dt).days
+    except Exception:
+        return 0
+
+def _aplicar_filtro_aprobados(df):
+    """Oculta APROBADO con más de 2 días de antigüedad."""
+    if df.empty or "fecha_respuesta" not in df.columns:
+        return df
+    mask = (df["estado"] == "APROBADO") & df["fecha_respuesta"].notna() & (df["fecha_respuesta"] != "")
+    if mask.any():
+        visibles = ~(mask & (df["fecha_respuesta"].map(lambda x: _dias_aprobado(x) > 2)))
+        df = df[visibles].copy()
     return df
 
 def _parsedt(txt):
@@ -126,6 +145,18 @@ def _parsedt(txt):
 df = cargar_datos()
 
 st.caption(f"Actualizado: {ahora_colombia()} (hora de Colombia)")
+
+# --- Toggle: Simplificar vista (debe estar antes de usarlo) ---
+col_t, _ = st.columns([2, 1])
+with col_t:
+    simplificado = st.toggle("🔍 Simplificar vista (oculta aprobados >2 días)", value=True,
+                             help="Muestra solo pendientes y aprobados recientes (<2 días). "
+                                  "Los aprobados antiguos se ocultan pero siguen disponibles "
+                                  "en el histórico descendente o en la descarga.")
+st.markdown("---")
+
+# Recargar con el toggle aplicado
+df = cargar_datos(simplificar=simplificado)
 
 if st.button("🔄 Actualizar ahora"):
     cargar_datos.clear()
